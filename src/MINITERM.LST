@@ -1,0 +1,95 @@
+' Demonstration der VT100-Emulation aus einem Terminalprogramm
+' (c) Markus Hoffmann
+' Vorher VT100EMU.PRG installieren !!
+'
+' Das Programm ist ein Mini-Terminalprogramm, was Daten von der Modem-Schnitt-
+' stelle anzeigt...
+PRINT CHR$(27);"c";    ! RESET
+PRINT CHR$(27);"[2J";CHR$(27);"[H";CHR$(27);"e";
+PRINT CHR$(16);
+@ansi.dbox(1,1,50,3)
+PRINT "[2;5H[7m       MINI-TERM (c) Markus Hoffmann        [m"
+PRINT "[3;5H[1m              V. 2.00    1993      [m"
+@ansi.dbox(65,1,12,3)
+PRINT "[2;69H"+TIME$
+PRINT "[3;67H"+DATE$
+PRINT "[5;1H"+STRING$(80,CHR$(196))
+PRINT CHR$(27);"[4m";"Baudrate einstellen:";CHR$(27);"[m"
+PRINT
+PRINT "  1 = 19200 Baud"
+PRINT "  2 =  9600 Baud"
+PRINT "  3 =  4800 Baud"
+PRINT "  4 =  2400 Baud"
+PRINT "  5 =  1200 Baud"
+PRINT "  6 =   600 Baud"
+PRINT "  9 =   300 Baud"
+PRINT
+WHILE b=0
+  PRINT "Ihre Wahl: ";
+  b=VAL(CHR$(INP(2)))
+  PRINT b
+WEND
+PRINT "Es werden die Parameter 8N1 eingestellt."
+~XBIOS(15,b,0,136,-1,-1,-1)
+PRINT CHR$(27);"[5m";
+PRINT CHR$(27);"[6;1H";CHR$(27);"[0J";"Programmabbruch mit einer Maustaste."'"SCREENDUMP mit SHIFT-SHIFT."
+PRINT CHR$(27);"[m";
+PRINT CHR$(27);"[3;56H";CHR$(27);"[7m";"ONLINE";CHR$(27);"[m"
+PRINT CHR$(27);"[10;1H";CHR$(27);"[4m";STRING$(80," ");
+PRINT CHR$(27);"[m"
+DO
+  IF BIOS(11,L:-1) MOD 16=3      ! SHIFT-SHIFT
+    PRINT CHR$(27);"[0i";        ! Screendump
+    REPEAT
+    UNTIL BIOS(11,L:-1) MOD 16<>3
+  ENDIF
+  EXIT IF MOUSEK                 ! Abbruch bei Maustaste
+  st&=INP?(5)
+  IF st&=-1                      ! Messages vom Terminal
+    OUT 1,INP(5)                 ! nach AUX: weiterleiten
+  ELSE IF st&<>0                 ! Wird nicht -1 geliefert bei INP?(5)
+    IF INP?(2)                   ! sondern z.B. $fc0030 bei TOS 1.4
+      OUT 1,INP(2)               ! So unterstuetzt die Emulation keine
+    ENDIF                        ! Tastatur und es wird ber Standart eingelesen
+  ENDIF
+  IF INP?(1)                     ! Alles was von AUX: kommt auf
+    OUT 2,INP(1)                 ! Bildschirm anzeigen
+  ENDIF
+LOOP
+PRINT CHR$(27);"c";CHR$(27);"[2J";    ! RESET
+END
+> PROCEDURE ansi.dframe(x&,y&,w&,h&)
+  LOCAL i&
+  PRINT CHR$(27);"["+STR$(y&)+";"+STR$(x&)+"H";CHR$(201);STRING$(w&,CHR$(205));CHR$(187);
+  FOR i&=1 TO h&
+    PRINT CHR$(27);"["+STR$(y&+i&)+";"+STR$(x&)+"H";CHR$(186);
+    PRINT CHR$(27);"["+STR$(y&+i&)+";"+STR$(x&+w&+1)+"H";CHR$(186);
+  NEXT i&
+  PRINT CHR$(27);"["+STR$(y&+h&)+";"+STR$(x&)+"H";CHR$(200);STRING$(w&,CHR$(205));CHR$(188);
+RETURN
+> PROCEDURE ansi.dbox(x&,y&,w&,h&)
+  LOCAL i&
+  PRINT CHR$(27);"["+STR$(y&)+";"+STR$(x&)+"H";CHR$(201);STRING$(w&,CHR$(205));CHR$(187);
+  FOR i&=1 TO h&
+    PRINT CHR$(27);"["+STR$(y&+i&)+";"+STR$(x&)+"H";CHR$(186);
+    PRINT STRING$(w&," ");CHR$(186);
+  NEXT i&
+  PRINT CHR$(27);"["+STR$(y&+h&)+";"+STR$(x&)+"H";CHR$(200);STRING$(w&,CHR$(205));CHR$(188);
+RETURN
+> PROCEDURE ansi.frame(x&,y&,w&,h&)
+  LOCAL i&
+  PRINT "["+STR$(y&)+";"+STR$(x&)+"H";CHR$(218);STRING$(w&,CHR$(196));CHR$(191);
+  FOR i&=1 TO h&
+    PRINT CHR$(27);"["+STR$(y&+i&)+";"+STR$(x&)+"H";CHR$(179);
+    PRINT CHR$(27);"["+STR$(y&+i&)+";"+STR$(x&+w&+1)+"H";CHR$(179);
+  NEXT i&
+  PRINT CHR$(27);"["+STR$(y&+h&)+";"+STR$(x&)+"H";CHR$(192);STRING$(w&,CHR$(196));CHR$(217);
+RETURN
+> PROCEDURE ansi.box(x&,y&,w&,h&)
+  PRINT CHR$(27);"["+STR$(y&)+";"+STR$(x&)+"H";CHR$(218);STRING$(w&,CHR$(196));CHR$(191);
+  FOR i&=1 TO h&
+    PRINT CHR$(27);"["+STR$(y&+i&)+";"+STR$(x&)+"H";CHR$(179);
+    PRINT STRING$(w&," ");CHR$(179);
+  NEXT i&
+  PRINT CHR$(27);"["+STR$(y&+h&)+";"+STR$(x&)+"H";CHR$(192);STRING$(w&,CHR$(196));CHR$(217);
+RETURN
