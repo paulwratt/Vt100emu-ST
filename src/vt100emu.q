@@ -1,7 +1,10 @@
  ; #####################################################################
  ; ##    VT 100 Emulation              Markus Hoffmann        4'91    ##
- ; ##    V. 1.0B      Letzte Bearbeitung    16.04.1994                ##
+ ; ##    V. 1.02a     Letzte Bearbeitung    12.03.1995                ##
  ; #####################################################################
+
+VERSION=$30C
+XB_ID='VT10'      ; XBRA-Kennung
 
 END_BASE:                       ; Ende der Basepage, Beginn des Programms
 ; ###########################
@@ -53,8 +56,8 @@ KEEPTERM: move.l (sp)+,d0
           trap   #1
           illegal             ; Programmende
 
-PRINT:  ibytes  "..\library\print_sr.b"
-WAIT:   ibytes  "..\library\key_wait.b"
+PRINT:  ibytes  "\assemble\library\print_sr.b"
+WAIT:   ibytes  "\assemble\library\key_wait.b"
 
 ;* Vektoren patchen
 ;* -----------------
@@ -70,7 +73,8 @@ PATCH:  lea     new_bios(pc),a0
      ;   lea     new_acia(pc),a1
      ;   move.l  $118,(old_acia-new_acia)(a1)
      ;   move.l  a1,$118
-        move.l  #$7777eeee,$51A             ; memval3 ungÅltig
+     ; wieder rausgenommen ! 9.2.1995
+     ;   move.l  #$7777eeee,$51A             ; memval3 ungÅltig
         rts
 
         include "100acia.q"  ; Tastatur-/Messageverwaltung
@@ -122,6 +126,7 @@ INSTALL: lea (END_BASE-256)(pc),a5  ; Adresse Basepage in a5
 ; ################# Hier die eigentliche Routine zur Ausgabe ###########
 ; ASCII-Code des auszugebenden Zeichens Åber 4(SP)
 ; ######################################################################
+       dc.l   'XBRA',XB_ID,0
 
 VT100: move   4(sp),d7         ; D7 tabu fÅr alles
 conout and.l  #$FF,d7
@@ -189,7 +194,7 @@ OUT5:    BSR   ZEICHENAUSGABE
 \ret:    rts
 
 MASTER_RESET:sf     (cursor_o_o_flg-esc_vars)(a6)    ; CURSOR ON
-VT_INIT:     move.l #$803a4,status(a6)    ; Alle Variablen initialisieren
+VT_INIT:     move.l #$80324,status(a6)    ; Alle Variablen initialisieren
              move.l #$1000, setup(a6)
              clr    style(a6)             ; bei Init und RESET
              clr    led(a6)
@@ -777,7 +782,7 @@ flags=66        ; l
 blink_flg:      dc.w 0
 cursor_v_l_flg: dc.w 0
 
-STring:   dc.b 27,'p s/w VT100/ANSI Terminal-Emulator  (c) by Markus Hoffmann V.2.0B Feb. 1992 ',27,'q',13,10
+STring:   dc.b 27,'p s/w VT100/VT102/ANSI Terminal-Emulator  (c) by Markus Hoffmann V.1.02a Feb. 1992 ',27,'q',13,10
           dc.b ' CTRL bei Programmstart = SETTINGS und INFO ',13,10,0
 STRING100:   IBYTES "..\VT100EMU\INTRO.ANS"
              dc.b 0

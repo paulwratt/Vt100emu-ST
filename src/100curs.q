@@ -1,14 +1,19 @@
 ; ####################################################
-; ## CURSOR-Funktionen.                             ##
-; ## alle Routinen werden mit rts abgeschlossen     ##
+; ## CURSOR-Funktionen. Modul fÅr VT100EMU          ## Letzte Bearbeitung:
+; ## alle Routinen werden mit rts abgeschlossen     ## 12.3.1995
 ; ## VerÑnderte Register: d5                        ##
 ; ####################################################
 
 CLR_HOME:    bsr  clear_screen
-CURSOR_HOME: clr  cursor_y(a6)
+CURSOR_HOME: move   status(a6),d0     ; Origin-Mode on (Region) ?
+             btst   #6,d0
+             beq.s  \noregion
+             move   reg_top(a6),cursor_y(a6)
+             bra.s  RETURN
+\noregion    clr  cursor_y(a6)
 RETURN:      clr  cursor_x(a6)
              rts
-
+                                             ; ORIGIN Mode ?
 PRINT_AT:    lea   varwert1(pc),a0
              move  (a0),cursor_y(A6)
              move  2(a0),cursor_x(A6)
@@ -27,22 +32,42 @@ CURSOR_RIGHT: move cursor_x(a6),d5
              beq.s cret
              addq #1,cursor_x(a6)
 cret         rts
+
 NEWLINE:     clr    cursor_x(a6)
 CURSOR_DOWN_scroll:
-LINEFEED:    addq   #1,cursor_y(A6)
-             cmp    #25,cursor_y(A6)
-             blt.s  cret
-             move   max_cury(A6),cursor_y(A6)
-             BRA    SCROLL_UP
+LINEFEED:    move   cursor_y(a6),d1
+             move   status(a6),d0     ; Origin-Mode on (Region) ?
+             btst   #6,d0
+             beq.s  \noregion         ; nein, dann hierher
+             cmp    reg_bot(A6),d1    ; Cursor am unteren Rand ?
+             beq    MULTISCROLLUP            ; Ja, Region hochscrollen
+             blt.s  \doit                     ; Cursor innerhalb bereich
+                                     ; nein, dann noch ganzen Screen checken
+                                    ; (sollte nicht vorkommen) kann auch iognoriert werden
+\noregion    cmp    max_cury(a6),d1 ; Cursor am unteren Rand ?
+             beq    SCROLL_UP                 ; Ja, ganzen Screen hochscrollen
+\doit        addq   #1,cursor_y(A6)           ; Nein, gehe eins nach unten
+             rts
+
 CURSOR_UP_scroll:  subq  #1,cursor_y(a6)
              bge.s  cret          ; Noch im Bildschirm ?
              clr  cursor_y(a6)    ; Nein, dann scrollen
              BRA   SCROLL_DOWN
-CURSOR_DOWN: addq  #1,cursor_y(a6)
-             cmp #25,cursor_y(a6)
-             blt.s  \ret
-             move max_cury(A6),cursor_y(a6)
+
+CURSOR_DOWN: move   cursor_y(a6),d1
+             move   status(a6),d0     ; Origin-Mode on (Region) ?
+             btst   #6,d0
+             beq.s  \noregion
+             cmp    reg_bot(a6),d1 ; Cursor am unteren Rand ?
+             beq.s  \ret            ; Ja, nixtun
+             blt.s  \doit           ; Cursor innerhalb bereich
+                                    ; nein, dann noch ganzen Screen checken
+                                    ; (sollte nicht vorkommen) kann auch iognoriert werden
+\noregion    cmp    max_cury(a6),d1 ; Cursor am unteren Rand ?
+             beq.s  \ret            ; Ja, nixtun
+\doit        addq   #1,cursor_y(A6) ; Nein, gehe eins nach unten
 \ret         rts
+
 CURSOR_UP:   subq   #1,cursor_y(a6)
              bge.s  \ret             ; Noch auf Screen ?
              clr    cursor_y(a6)
@@ -205,15 +230,18 @@ V_TAB:       move   cursor_y(a6),d0
 \ret         rts
 
 ; INitialisiert Tabulatoren: V-tabs lîschen und bei H-Tab jeden 8ten setzen
+; 1. Tab kommt an Position 9 (bei Rand=1)
 
 inittabs     lea    x_tabs(pc),a0
              move   max_curx(a6),d0
              addq   #1,d0
              lsr    #3,d0         ; /8
              subq   #1,d0         ; wegen dbra
-\hook        clr.l  (a0)+
+             clr.b  (a0)+         ; erste Pos kein tab
+\hook        clr.b  (a0)+
+             clr.l  (a0)+
              clr.w  (a0)+
-             clr.b  (a0)+
+
              move.b #'o',(a0)+
              dbra   d0,\hook
 CLR_VTABS    move   max_cury(a6),d0
@@ -261,8 +289,8 @@ curxs:      ds.w 1
 curys:      ds.w 1
 cur_s_flgs: ds.w 1
 
-X_TABS:     ds.b 80
-Y_TABS:     ds.b 25
+X_TABS:     ds.b 82
+Y_TABS:     ds.b 26
                  align
    text
 
