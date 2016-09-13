@@ -1,0 +1,8 @@
+All .ANS files can be displayed with the VT100 terminal emulation by 
+just double clicking on them (on the ATARI ST) after the emulation 
+has been installed.
+
+They demontrate some of the features of the emulation.
+
+READ_ME.ANS   -- a nicer readme
+DRUCK.ANS     -- demonstrate the printing capabilities
